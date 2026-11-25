@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>القطار ٢٠٤٨</title>
+<style>
+:root{
+  --bg:#F2F5FA;--ink:#0B1F4A;--muted:#5A6B8C;--cell:#DCE4F2;--panel:#FFFFFF;
+  --btn:#003082;--btnink:#FFFFFF;--n:4;--gap:8px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0C1428;--ink:#EAF0FF;--muted:#8FA3CC;--cell:#1A2646;--panel:#132041;
+  --btn:#FFC917;--btnink:#0B1F4A;color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0C1428;--ink:#EAF0FF;--muted:#8FA3CC;--cell:#1A2646;--panel:#132041;
+  --btn:#FFC917;--btnink:#0B1F4A;color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:"Avenir Next","Segoe UI",system-ui,sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:12px 16px;transition:background .3s,color .3s;
+}
+
+/* ── Header ── */
+.top{width:min(92vw,440px);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.title-wrap{display:flex;align-items:center;gap:8px}
+h1{margin:0;font-size:1.45rem;font-weight:900;letter-spacing:-.5px}
+.loco{font-size:1.6rem;display:inline-block;animation:chug 1s ease-in-out infinite alternate}
+@keyframes chug{from{transform:translateX(0) rotate(-3deg)}to{transform:translateX(5px) rotate(3deg)}}
+
+/* ── Score boxes ── */
+.sc{display:flex;gap:8px}
+.box{
+  background:var(--panel);border-radius:12px;padding:6px 14px;
+  text-align:center;min-width:70px;
+  box-shadow:0 2px 12px #0B1F4A14;transition:background .3s;
+}
+.box small{display:block;color:var(--muted);font-size:.65rem;text-transform:uppercase;letter-spacing:.5px}
+.box b{font-size:1.15rem;display:block}
+.score-bump{animation:sBump .22s ease-out}
+@keyframes sBump{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
+
+/* floating +score */
+.fscore{
+  position:fixed;pointer-events:none;font-weight:800;font-size:1rem;
+  color:var(--btn);z-index:9999;white-space:nowrap;
+  animation:floatUp .75s ease-out forwards;
+}
+@keyframes floatUp{
+  0%{opacity:1;transform:translateY(0) scale(1)}
+  100%{opacity:0;transform:translateY(-52px) scale(.8)}
+}
+
+/* ── Combo ── */
+#combo{
+  font-size:.85rem;font-weight:800;color:var(--btn);
+  min-height:1.3em;text-align:center;transition:opacity .3s;
+  letter-spacing:.3px;
+}
+
+/* ── Board wrapper ── */
+#board-wrap{
+  position:relative;
+  width:min(92vw,440px);
+}
+
+/* ── Board ── */
+#board{
+  width:100%;aspect-ratio:1;
+  background:var(--panel);border-radius:16px;padding:var(--gap);
+  display:grid;
+  grid-template-columns:repeat(var(--n),1fr);
+  gap:var(--gap);
+  box-shadow:0 4px 20px #0B1F4A18;transition:background .3s;
+  direction:ltr;
+}
+.cell-bg{border-radius:9px;background:var(--cell);transition:background .3s}
+
+/* tile layer sits on top */
+#tile-layer{
+  position:absolute;
+  inset:var(--gap);
+  pointer-events:none;
+}
+.tile{
+  position:absolute;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;line-height:1;
+  box-shadow:0 2px 8px #00000020;
+  transition:left .11s cubic-bezier(.22,.68,0,1.2),
+             top  .11s cubic-bezier(.22,.68,0,1.2),
+             background .15s,color .15s;
+  will-change:left,top;
+}
+.tile.tnew{animation:tNew .17s ease-out}
+@keyframes tNew{from{transform:scale(.35);opacity:.4}to{transform:scale(1);opacity:1}}
+.tile.tmerge{animation:tMerge .22s ease-out}
+@keyframes tMerge{
+  0%{transform:scale(1)}
+  45%{transform:scale(1.22)}
+  100%{transform:scale(1)}
+}
+@media(prefers-reduced-motion:reduce){.tile.tnew,.tile.tmerge{animation:none;transition:none}}
+
+/* ── Overlay ── */
+#over{
+  position:absolute;inset:0;border-radius:16px;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(3px);
+  display:none;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;direction:rtl;text-align:center;z-index:20;
+}
+.over-title{font-size:1.6rem;font-weight:900}
+.over-sub{font-size:.95rem;color:var(--muted)}
+
+/* ── Buttons ── */
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{
+  font:inherit;font-weight:700;
+  background:var(--btn);color:var(--btnink);
+  border:0;border-radius:11px;padding:9px 18px;
+  cursor:pointer;transition:background .2s,color .2s,transform .1s,opacity .2s;
+  box-shadow:0 2px 8px #0000001a;
+  font-size:.9rem;
+}
+button:active{transform:scale(.94)}
+button.alt{background:var(--panel);color:var(--ink)}
+button.on{outline:2.5px solid var(--btn);outline-offset:2px}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:focus-visible{outline:3px solid var(--muted);outline-offset:2px}
+#theme{padding:8px 11px;font-size:1.05rem;line-height:1}
+
+p.hint{margin:0;color:var(--muted);font-size:.8rem;text-align:center}
+
+/* ── Confetti ── */
+.conf{
+  position:fixed;top:-14px;pointer-events:none;
+  border-radius:3px;z-index:9998;
+  animation:cFall linear forwards;
+}
+@keyframes cFall{
+  0%{transform:translateY(0) rotate(0deg);opacity:1}
+  100%{transform:translateY(110vh) rotate(800deg);opacity:0}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="title-wrap">
+    <span class="loco">🚂</span>
+    <h1>القطار ٢٠٤٨</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <button id="theme" class="alt" title="تبديل المظهر">🌙</button>
+    <div class="sc">
+      <div class="box"><small>النقاط</small><b id="s">0</b></div>
+      <div class="box"><small>الأفضل</small><b id="b">0</b></div>
+    </div>
+  </div>
+</div>
+
+<div id="combo"></div>
+
+<div id="board-wrap">
+  <div id="board"></div>
+  <div id="tile-layer"></div>
+  <div id="over">
+    <div class="over-title" id="msg"></div>
+    <div class="over-sub" id="osub"></div>
+    <div class="row">
+      <button id="cont">تابع اللعب</button>
+      <button id="again">لعبة جديدة</button>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <button id="undo" class="alt">↩ تراجع</button>
+  <button id="new">جديدة</button>
+  <button id="z4" class="alt">٤×٤</button>
+  <button id="z5" class="alt">٥×٥</button>
+  <button id="z6" class="alt">٦×٦</button>
+  <button id="sound" class="alt" title="صوت">🔊</button>
+</div>
+
+<p class="hint">اسحب أو استخدم مفاتيح الأسهم · W A S D</p>
+
+<script>
+/* ── Palette (extends to 16384) ── */
+const C={
+  2:["#E8EEF8","#0B1F4A"],4:["#CFDCF1","#0B1F4A"],
+  8:["#9DB6E3","#0B1F4A"],16:["#6E91D3","#fff"],
+  32:["#3F6BC0","#fff"],64:["#003082","#fff"],
+  128:["#FFC917","#0B1F4A"],256:["#FFB000","#0B1F4A"],
+  512:["#FF9100","#0B1F4A"],1024:["#F26B21","#fff"],
+  2048:["#D6232E","#fff"],4096:["#A50020","#fff"],
+  8192:["#7B0099","#fff"],16384:["#3D007A","#fff"]
+};
+
+/* ── State ── */
+let n=4,g=[],score=0,prev=null,won=false,soundOn=true,comboCount=0;
+let best={4:0,5:0,6:0};
+let tileKeys=[];   // parallel to g[]: unique key per cell
+let tileEls={};    // key → DOM element
+let nextKey=0;
+
+const $=id=>document.getElementById(id);
+const board=$("board"),wrap=$("board-wrap"),tileLayer=$("tile-layer"),over=$("over");
+
+/* ── LocalStorage ── */
+function ls(k,v){
+  try{if(v===undefined)return localStorage.getItem(k);
+      localStorage.setItem(k,v)}catch(e){}return null;
+}
+try{const b=JSON.parse(ls("t2048best"));if(b){best={4:b[4]||0,5:b[5]||0,6:b[6]||0}}}catch(e){}
+
+/* ── Theme ── */
+(function initTheme(){
+  const saved=ls("t2048theme");
+  const dark=saved==="dark"||(saved===null&&matchMedia("(prefers-color-scheme:dark)").matches);
+  document.documentElement.dataset.theme=dark?"dark":"light";
+  $("theme").textContent=dark?"☀️":"🌙";
+})();
+$("theme").onclick=()=>{
+  const next=document.documentElement.dataset.theme==="dark"?"light":"dark";
+  document.documentElement.dataset.theme=next;
+  $("theme").textContent=next==="dark"?"☀️":"🌙";
+  ls("t2048theme",next);
+};
+
+/* ── Audio ── */
+let _ac=null;
+function getAC(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();return _ac;}
+function tone(freq,dur,vol=0.15,type="sine"){
+  if(!soundOn)return;
+  try{
+    const ctx=getAC(),o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+dur);
+    o.connect(g);g.connect(ctx.destination);
+    o.start();o.stop(ctx.currentTime+dur);
+  }catch(e){}
+}
+function sndSlide(){tone(200,.07,.08,"triangle")}
+function sndMerge(val){
+  const f=160+Math.log2(Math.max(val,2))*30;
+  tone(f,.16,.2,"sine");
+  setTimeout(()=>tone(f*1.5,.1,.1,"sine"),60);
+}
+function sndWin(){
+  [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.2,.22),i*100));
+}
+function sndOver(){
+  [280,220,160].forEach((f,i)=>setTimeout(()=>tone(f,.15,.18,"sawtooth"),i*110));
+}
+$("sound").onclick=()=>{soundOn=!soundOn;$("sound").textContent=soundOn?"🔊":"🔇"};
+
+/* ── Board build ── */
+function build(){
+  board.innerHTML="";
+  tileLayer.innerHTML="";
+  tileEls={};
+  document.documentElement.style.setProperty("--n",n);
+  for(let i=0;i<n*n;i++){
+    const d=document.createElement("div");
+    d.className="cell-bg";board.appendChild(d);
+  }
+  ["z4","z5","z6"].forEach(id=>$(id).classList.toggle("on",$(id).id==="z"+n));
+}
+
+/* ── Tile geometry ── */
+function tileSize(){
+  return tileLayer.clientWidth/(n) - 8*(n-1)/n;
+}
+function cellPx(i){
+  const w=tileLayer.clientWidth,gap=8;
+  const sz=(w-(n-1)*gap)/n;
+  return{left:(i%n)*(sz+gap), top:Math.floor(i/n)*(sz+gap), sz};
+}
+function posEl(el,i){
+  const{left,top,sz}=cellPx(i);
+  el.style.left=left+"px";el.style.top=top+"px";
+  el.style.width=el.style.height=sz+"px";
+  el.style.fontSize=fSize(el._val||2,sz)+"px";
+}
+function fSize(v,sz){
+  const l=String(v).length;
+  return l<=2?sz*.44:l===3?sz*.36:l===4?sz*.28:sz*.22;
+}
+function colorTile(el,v){
+  const c=C[v]||["#2A004E","#fff"];
+  el.style.background=c[0];el.style.color=c[1];
+}
+
+/* ── Float score popup ── */
+function floatScore(val,cellIdx){
+  const{left,top}=cellPx(cellIdx);
+  const r=tileLayer.getBoundingClientRect();
+  const el=document.createElement("div");
+  el.className="fscore";el.textContent="+"+val;
+  el.style.left=(r.left+left+10)+"px";
+  el.style.top=(r.top+top)+"px";
+  document.body.appendChild(el);
+  el.addEventListener("animationend",()=>el.remove());
+}
+
+/* ── Combo display ── */
+function showCombo(c){
+  const el=$("combo");
+  if(c>=2){
+    el.textContent="كومبو ×"+c+" "+"⭐".repeat(Math.min(c,5));
+    el.style.opacity=1;
+  }else{el.textContent="";el.style.opacity=0;}
+}
+
+/* ── Render all tiles ── */
+function renderAll(newCells=[],mergeCells=[]){
+  /* remove dead tiles */
+  const live=new Set(tileKeys.filter((_,i)=>g[i]>0));
+  Object.keys(tileEls).forEach(k=>{
+    if(!live.has(+k)){tileEls[k].remove();delete tileEls[k];}
+  });
+  /* update/create */
+  for(let i=0;i<n*n;i++){
+    const v=g[i];if(!v)continue;
+    const k=tileKeys[i];
+    if(tileEls[k]){
+      const el=tileEls[k];el._val=v;
+      posEl(el,i);colorTile(el,v);el.textContent=v;
+      if(mergeCells.includes(i)){
+        el.classList.remove("tnew","tmerge");void el.offsetWidth;
+        el.classList.add("tmerge");
+      }
+    }else{
+      const el=document.createElement("div");
+      el.className="tile";el._val=v;
+      el.textContent=v;colorTile(el,v);
+      posEl(el,i);
+      if(newCells.includes(i))el.classList.add("tnew");
+      tileEls[k]=el;tileLayer.appendChild(el);
+    }
+  }
+  $("s").textContent=score;
+  $("b").textContent=best[n];
+  $("undo").disabled=!prev;
+}
+
+/* ── Add random tile ── */
+function addTile(){
+  const empty=g.map((v,i)=>v?-1:i).filter(x=>x>=0);
+  if(!empty.length)return -1;
+  const i=empty[Math.random()*empty.length|0];
+  g[i]=Math.random()<.9?2:4;
+  tileKeys[i]=nextKey++;
+  return i;
+}
+
+/* ── Slide one line ── */
+function slideLine(cells){
+  /* cells = [{v,k},...] */
+  const vals=[],keys=[],isMerged=[];
+  for(const{v,k}of cells.filter(c=>c.v)){
+    const j=vals.length-1;
+    if(j>=0&&vals[j]===v&&!isMerged[j]){
+      vals[j]*=2;isMerged[j]=true;keys[j]=nextKey++;
+    }else{vals.push(v);keys.push(k);isMerged.push(false);}
+  }
+  while(vals.length<n){vals.push(0);keys.push(0);isMerged.push(false);}
+  return{vals,keys,isMerged};
+}
+
+/* ── Index helpers ── */
+function lineIdx(dir,line){
+  const r=[...Array(n).keys()];
+  let arr=dir<2?r.map(j=>line*n+j):r.map(j=>j*n+line);
+  if(dir%2===1)arr=arr.reverse();
+  return arr;
+}
+function canMove(){
+  if(g.includes(0))return true;
+  for(let i=0;i<n*n;i++){
+    if(i%n<n-1&&g[i]&&g[i]===g[i+1])return true;
+    if(i<n*(n-1)&&g[i]&&g[i]===g[i+n])return true;
+  }
+  return false;
+}
+
+/* ── Move ── */
+function move(dir){
+  if(over.style.display==="flex")return;
+  const snap={g:g.slice(),score,tileKeys:tileKeys.slice()};
+  let changed=false,merged=[],pts=0;
+
+  for(let line=0;line<n;line++){
+    const ix=lineIdx(dir,line);
+    const cells=ix.map(k=>({v:g[k],k:tileKeys[k]}));
+    const{vals,keys,isMerged}=slideLine(cells);
+    ix.forEach((k,j)=>{
+      if(g[k]!==vals[j])changed=true;
+      if(isMerged[j]){pts+=vals[j];merged.push(k);floatScore(vals[j],k);}
+      g[k]=vals[j];tileKeys[k]=keys[j];
+    });
+  }
+  if(!changed)return;
+
+  prev=snap;
+  score+=pts;
+  if(score>best[n])best[n]=score;
+
+  if(merged.length){comboCount++;sndMerge(pts);}
+  else{comboCount=0;sndSlide();}
+  showCombo(comboCount);
+
+  /* bump score display */
+  const sel=$("s");sel.classList.remove("score-bump");void sel.offsetWidth;sel.classList.add("score-bump");
+
+  const ni=addTile();
+  renderAll(ni>=0?[ni]:[],merged);
+  save();
+  try{merged.length&&navigator.vibrate&&navigator.vibrate(14)}catch(e){}
+
+  if(!won&&g.some(v=>v>=2048)){
+    won=true;save();sndWin();confetti();
+    showOver("🎉 وصلت إلى ٢٠٤٨!","نقاطك: "+score,true);
+  }else if(!canMove()){
+    sndOver();
+    showOver("انتهت اللعبة 😔","نقاطك النهائية: "+score,false);
+  }
+}
+
+/* ── Overlay ── */
+function showOver(title,sub,canCont){
+  $("msg").textContent=title;
+  $("osub").textContent=sub;
+  $("cont").style.display=canCont?"":"none";
+  over.style.display="flex";
+}
+
+/* ── Confetti ── */
+function confetti(){
+  const cols=["#FFC917","#003082","#D6232E","#3F6BC0","#FF9100","#6E91D3","#fff"];
+  for(let i=0;i<100;i++){
+    const el=document.createElement("div");
+    el.className="conf";
+    const sz=5+Math.random()*9;
+    el.style.cssText=`width:${sz}px;height:${sz*1.7}px;left:${Math.random()*100}vw;
+background:${cols[Math.random()*cols.length|0]};animation-duration:${1.5+Math.random()*1.8}s;
+animation-delay:${Math.random()*.9}s;transform:rotate(${Math.random()*360}deg);`;
+    document.body.appendChild(el);
+    el.addEventListener("animationend",()=>el.remove());
+  }
+}
+
+/* ── Save ── */
+function save(){
+  ls("t2048state",JSON.stringify({n,g,score,won,tileKeys}));
+  ls("t2048best",JSON.stringify(best));
+}
+
+/* ── Start ── */
+function start(){
+  g=Array(n*n).fill(0);
+  tileKeys=Array(n*n).fill(0);
+  tileLayer.innerHTML="";tileEls={};
+  score=0;prev=null;won=false;comboCount=0;
+  over.style.display="none";showCombo(0);
+  addTile();addTile();
+  renderAll([],[]);
+  /* mark as new */
+  tileKeys.forEach((k,i)=>{if(g[i]&&tileEls[k])tileEls[k].classList.add("tnew");});
+  save();
+}
+function setSize(s){n=s;build();start();}
+
+/* ── Touch ── */
+let sx,sy;
+wrap.addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+wrap.addEventListener("touchmove",e=>e.preventDefault(),{passive:false});
+wrap.addEventListener("touchend",e=>{
+  const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;
+  Math.abs(dx)>Math.abs(dy)?move(dx>0?1:0):move(dy>0?3:2);
+});
+
+/* ── Keyboard ── */
+addEventListener("keydown",e=>{
+  const m={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3,
+           a:0,A:0,d:1,D:1,w:2,W:2,s:3,S:3}[e.key];
+  if(m!==undefined){e.preventDefault();move(m);}
+});
+
+/* ── Button wiring ── */
+$("new").onclick=()=>{if(confirm("بدء لعبة جديدة؟"))start();};
+$("again").onclick=start;
+$("cont").onclick=()=>{over.style.display="none";};
+$("undo").onclick=()=>{
+  if(!prev)return;
+  g=prev.g;score=prev.score;tileKeys=prev.tileKeys||tileKeys;
+  prev=null;won=false;comboCount=0;
+  tileLayer.innerHTML="";tileEls={};
+  over.style.display="none";showCombo(0);
+  renderAll([],[]);save();
+};
+$("z4").onclick=()=>setSize(4);
+$("z5").onclick=()=>setSize(5);
+$("z6").onclick=()=>setSize(6);
+
+/* ── Resize: reflow tile positions ── */
+let rTimer;
+window.addEventListener("resize",()=>{
+  clearTimeout(rTimer);
+  rTimer=setTimeout(()=>{
+    tileKeys.forEach((k,i)=>{
+      if(g[i]&&tileEls[k])posEl(tileEls[k],i);
+    });
+  },80);
+});
+
+/* ── Boot ── */
+(function boot(){
+  let st=null;
+  try{st=JSON.parse(ls("t2048state"))}catch(e){}
+  if(st&&st.g&&st.n&&st.g.length===st.n*st.n){
+    n=st.n;g=st.g;score=st.score||0;won=!!st.won;
+    tileKeys=st.tileKeys||g.map((v,i)=>v?nextKey++:0);
+    build();renderAll([],[]);
+    if(!canMove())showOver("انتهت اللعبة 😔","نقاطك: "+score,false);
+  }else{
+    build();start();
+  }
+})();
+</script>
+</body>
+</html>
